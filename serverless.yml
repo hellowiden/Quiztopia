@@ -44,13 +44,6 @@ package:
   individually: true
 
 functions:
-  dummy:
-    handler: quizzes/dummy.handler
-    events:
-      - httpApi:
-          path: /quizzes/dummy
-          method: GET
-
   register:
     handler: auth/register.handler
     events:

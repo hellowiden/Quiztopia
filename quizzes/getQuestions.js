@@ -1,22 +1,25 @@
 // quizzes/getQuestions.js
+import AWS from 'aws-sdk';
+import middy from "@middy/core";
+import httpErrorHandler from '@middy/http-error-handler';
+import httpEventNormalizer from '@middy/http-event-normalizer';
+import httpHeaderNormalizer from '@middy/http-header-normalizer';
 
-const AWS = require('aws-sdk');
 const dynamoDb = new AWS.DynamoDB.DocumentClient();
 
-module.exports.handler = async (event) => {
+const getQuestion = async (event) => {
   const { quizId } = event.pathParameters;
 
   const params = {
     TableName: process.env.QUESTIONS_TABLE,
-    IndexName: 'quizId-index',
-    KeyConditionExpression: 'quizId = :quizId',
+    FilterExpression: 'quizId = :quizId',
     ExpressionAttributeValues: {
       ':quizId': quizId,
     },
   };
 
   try {
-    const result = await dynamoDb.query(params).promise();
+    const result = await dynamoDb.scan(params).promise();
 
     return {
       statusCode: 200,
@@ -31,3 +34,8 @@ module.exports.handler = async (event) => {
     };
   }
 };
+
+export const handler = middy(getQuestion)
+  .use(httpEventNormalizer())
+  .use(httpHeaderNormalizer())
+  .use(httpErrorHandler());

@@ -1,9 +1,14 @@
 // Path: quizzes/addQuestion.js
 
-const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
-const { DynamoDBDocumentClient, PutCommand, GetCommand } = require("@aws-sdk/lib-dynamodb");
-const jwt = require("jsonwebtoken");
-const { v4: uuidv4 } = require("uuid");
+import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import { DynamoDBDocumentClient, PutCommand, GetCommand } from "@aws-sdk/lib-dynamodb";
+import middy from "@middy/core";
+import jwt from "jsonwebtoken";
+import { v4 as uuidv4 } from "uuid";
+import jsonBodyParser from '@middy/http-json-body-parser';
+import httpErrorHandler from '@middy/http-error-handler';
+import httpEventNormalizer from '@middy/http-event-normalizer';
+import httpHeaderNormalizer from '@middy/http-header-normalizer';
 
 const client = new DynamoDBClient();
 const docClient = DynamoDBDocumentClient.from(client);
@@ -12,12 +17,12 @@ const QUESTIONS_TABLE = process.env.QUESTIONS_TABLE;
 const QUIZZES_TABLE = process.env.QUIZZES_TABLE;
 const JWT_SECRET = process.env.JWT_SECRET;
 
-module.exports.handler = async (event) => {
-  const token = event.headers.Authorization?.split(' ')[1];
+const addQuestion = async (event) => {
+  const token = event.headers.authorization?.split(' ')[1];
   const { quizId } = event.pathParameters;
-  const { questionText, correctAnswer, coordinates } = JSON.parse(event.body);
+  const { questionText, correctAnswer, longitude, latitude } = event.body;
 
-  if (!token || !quizId || !questionText || !correctAnswer || !coordinates || !coordinates.latitude || !coordinates.longitude) {
+  if (!token || !quizId || !questionText || !correctAnswer || !longitude || !latitude) {
     return { statusCode: 400, body: JSON.stringify({ error: "Missing required fields or token" }) };
   }
 
@@ -50,7 +55,7 @@ module.exports.handler = async (event) => {
         quizId,
         questionText,
         correctAnswer,
-        coordinates, 
+        coordinates: { longitude, latitude }, 
       },
     };
 
@@ -68,4 +73,10 @@ module.exports.handler = async (event) => {
     console.error("Error adding question:", error);
     return { statusCode: 500, body: JSON.stringify({ error: `Could not add question: ${error.message}` }) };
   }
-};
+}
+
+export const handler = middy(addQuestion)
+  .use(jsonBodyParser())
+  .use(httpEventNormalizer()) 
+  .use(httpHeaderNormalizer())
+  .use(httpErrorHandler());

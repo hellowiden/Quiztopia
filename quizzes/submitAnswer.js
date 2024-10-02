@@ -1,8 +1,14 @@
 // Path quizzes/submitAnswer.js
 
-const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
-const { DynamoDBDocumentClient, GetCommand, UpdateCommand } = require("@aws-sdk/lib-dynamodb");
-const jwt = require("jsonwebtoken");
+import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import { DynamoDBDocumentClient, GetCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
+import middy from "@middy/core";
+import jsonBodyParser from '@middy/http-json-body-parser';
+import httpErrorHandler from '@middy/http-error-handler';
+import httpEventNormalizer from '@middy/http-event-normalizer';
+import httpHeaderNormalizer from '@middy/http-header-normalizer';
+
+import jwt from "jsonwebtoken";
 
 const client = new DynamoDBClient();
 const docClient = DynamoDBDocumentClient.from(client);
@@ -11,11 +17,11 @@ const QUESTIONS_TABLE = process.env.QUESTIONS_TABLE;
 const SCORES_TABLE = process.env.SCORES_TABLE;
 const JWT_SECRET = process.env.JWT_SECRET;
 
-module.exports.handler = async (event) => {
+const submitAnswer = async (event) => {
   // Extract token from the Authorization header
-  const token = event.headers.Authorization?.split(' ')[1];
+  const token = event.headers.authorization?.split(' ')[1];
   const { quizId, questionId } = event.pathParameters;
-  const { answer } = JSON.parse(event.body);
+  const { answer } = event.body;
 
   // Ensure all necessary fields are present
   if (!token || !quizId || !questionId || !answer) {
@@ -82,4 +88,9 @@ module.exports.handler = async (event) => {
     console.error("Error submitting answer:", error);
     return { statusCode: 500, body: JSON.stringify({ error: `Could not submit answer: ${error.message}` }) };
   }
-};
+}
+export const handler = middy(submitAnswer)
+  .use(jsonBodyParser())
+  .use(httpEventNormalizer()) 
+  .use(httpHeaderNormalizer())
+  .use(httpErrorHandler());

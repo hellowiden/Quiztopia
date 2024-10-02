@@ -1,8 +1,13 @@
 // Path quizzes/deleteQuestion.js
 
-const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
-const { DynamoDBDocumentClient, DeleteCommand, GetCommand } = require("@aws-sdk/lib-dynamodb");
-const jwt = require("jsonwebtoken");
+import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import { DynamoDBDocumentClient, DeleteCommand, GetCommand } from "@aws-sdk/lib-dynamodb";
+import middy from "@middy/core";
+import jwt from "jsonwebtoken";
+import jsonBodyParser from '@middy/http-json-body-parser';
+import httpErrorHandler from '@middy/http-error-handler';
+import httpEventNormalizer from '@middy/http-event-normalizer';
+import httpHeaderNormalizer from '@middy/http-header-normalizer';
 
 const client = new DynamoDBClient();
 const docClient = DynamoDBDocumentClient.from(client);
@@ -11,8 +16,8 @@ const QUESTIONS_TABLE = process.env.QUESTIONS_TABLE;
 const QUIZZES_TABLE = process.env.QUIZZES_TABLE;
 const JWT_SECRET = process.env.JWT_SECRET;
 
-module.exports.handler = async (event) => {
-  const token = event.headers.Authorization?.split(' ')[1];
+const deleteQuestion = async (event) => {
+  const token = event.headers.authorization?.split(' ')[1];
   const { quizId, questionId } = event.pathParameters;
 
   if (!token || !quizId || !questionId) {
@@ -51,4 +56,10 @@ module.exports.handler = async (event) => {
     console.error("Error deleting question:", error);
     return { statusCode: 500, body: JSON.stringify({ error: `Could not delete question: ${error.message}` }) };
   }
-};
+}
+
+export const handler = middy(deleteQuestion)
+  .use(jsonBodyParser())
+  .use(httpEventNormalizer()) 
+  .use(httpHeaderNormalizer())
+  .use(httpErrorHandler());

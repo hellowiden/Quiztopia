@@ -1,16 +1,21 @@
 // Path: auth/register.js
 
-const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
-const { DynamoDBDocumentClient, GetCommand, PutCommand } = require("@aws-sdk/lib-dynamodb");
-const bcrypt = require("bcryptjs");
+import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import { DynamoDBDocumentClient, GetCommand, PutCommand } from "@aws-sdk/lib-dynamodb";
+import middy from "@middy/core";
+import bcrypt from "bcryptjs";
+import jsonBodyParser from '@middy/http-json-body-parser';
+import httpErrorHandler from '@middy/http-error-handler';
+import httpEventNormalizer from '@middy/http-event-normalizer';
+import httpHeaderNormalizer from '@middy/http-header-normalizer';
 
 const client = new DynamoDBClient();
 const docClient = DynamoDBDocumentClient.from(client);
 
 const USERS_TABLE = process.env.USERS_TABLE;
 
-module.exports.handler = async (event) => {
-  const { userId, name, password } = JSON.parse(event.body);
+const register = async (event) => {
+  const { userId, name, password } = event.body;
 
   if (!userId || !name || !password) {
     return { statusCode: 400, body: JSON.stringify({ error: "userId, name, and password are required" }) };
@@ -44,5 +49,9 @@ module.exports.handler = async (event) => {
     console.error("Error registering user:", error);
     return { statusCode: 500, body: JSON.stringify({ error: `Could not register user: ${error.message}` }) };
   }
-};
-
+}
+export const handler = middy(register)
+  .use(jsonBodyParser())
+  .use(httpEventNormalizer()) 
+  .use(httpHeaderNormalizer())
+  .use(httpErrorHandler());

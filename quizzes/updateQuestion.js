@@ -1,12 +1,13 @@
 // Path quizzes/updateQuestion.js
 
-const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
-const { DynamoDBDocumentClient, UpdateCommand, GetCommand } = require("@aws-sdk/lib-dynamodb");
-const jwt = require("jsonwebtoken");
-const middy = require('@middy/core');
-const jsonBodyParser = require('@middy/http-json-body-parser');
-const httpErrorHandler = require('@middy/http-error-handler');
-const httpEventNormalizer = require('@middy/http-event-normalizer');
+import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import { DynamoDBDocumentClient, UpdateCommand, GetCommand } from "@aws-sdk/lib-dynamodb";
+import jwt from "jsonwebtoken";
+import middy from '@middy/core';
+import jsonBodyParser from '@middy/http-json-body-parser';
+import httpErrorHandler from '@middy/http-error-handler';
+import httpEventNormalizer from '@middy/http-event-normalizer';
+import httpHeaderNormalizer from '@middy/http-header-normalizer';
 
 const client = new DynamoDBClient();
 const docClient = DynamoDBDocumentClient.from(client);
@@ -16,7 +17,7 @@ const QUIZZES_TABLE = process.env.QUIZZES_TABLE;
 const JWT_SECRET = process.env.JWT_SECRET;
 
 const updateQuestion = async (event) => {
-  const token = event.headers.Authorization?.split(' ')[1];
+  const token = event.headers.authorization?.split(' ')[1];
   const { quizId, questionId } = event.pathParameters;
   const { questionText, correctAnswer, coordinates } = event.body;
 
@@ -67,8 +68,8 @@ const updateQuestion = async (event) => {
   }
 };
 
-// Wrap the handler with Middy and apply middleware
-module.exports.handler = middy(updateQuestion)
+export const handler = middy(updateQuestion)
   .use(jsonBodyParser())
   .use(httpEventNormalizer()) 
+  .use(httpHeaderNormalizer())
   .use(httpErrorHandler());
