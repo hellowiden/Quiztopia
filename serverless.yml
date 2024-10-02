@@ -1,0 +1,194 @@
+org: hellowiden
+app: quiztopia
+service: quiztopia
+
+frameworkVersion: '4'
+
+provider:
+  name: aws
+  runtime: nodejs20.x
+  region: eu-north-1
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - dynamodb:Query
+            - dynamodb:Scan
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+            - dynamodb:UpdateItem
+            - dynamodb:DeleteItem
+          Resource:
+            - Fn::GetAtt:
+                - UsersTable
+                - Arn
+            - Fn::GetAtt:
+                - QuizzesTable
+                - Arn
+            - Fn::GetAtt:
+                - QuestionsTable
+                - Arn
+            - Fn::GetAtt:
+                - ScoresTable
+                - Arn
+
+  environment:
+    USERS_TABLE: UsersTable
+    QUIZZES_TABLE: QuizzesTable
+    QUESTIONS_TABLE: QuestionsTable
+    SCORES_TABLE: ScoresTable
+    JWT_SECRET: babben65189561e
+
+package:
+  individually: true
+
+functions:
+  dummy:
+    handler: quizzes/dummy.handler
+    events:
+      - httpApi:
+          path: /quizzes/dummy
+          method: GET
+
+  register:
+    handler: auth/register.handler
+    events:
+      - httpApi:
+          path: /auth/register
+          method: POST
+
+  login:
+    handler: auth/login.handler
+    events:
+      - httpApi:
+          path: /auth/login
+          method: POST
+
+  createQuiz:
+    handler: quizzes/createQuiz.handler
+    events:
+      - httpApi:
+          path: /quizzes
+          method: POST
+
+  updateQuiz:
+    handler: quizzes/updateQuiz.handler
+    events:
+      - httpApi:
+          path: /quizzes/{quizId}
+          method: PUT
+
+  addQuestion:
+    handler: quizzes/addQuestion.handler
+    events:
+      - httpApi:
+          path: /quizzes/{quizId}/questions
+          method: POST
+
+  getQuizzes:
+    handler: quizzes/getQuizzes.handler
+    events:
+      - httpApi:
+          path: /quizzes
+          method: GET
+
+  getQuestions:
+    handler: quizzes/getQuestions.handler
+    events:
+      - httpApi:
+          path: /quizzes/{quizId}/questions
+          method: GET
+
+  updateQuestion:
+    handler: quizzes/updateQuestion.handler
+    events:
+      - httpApi:
+          path: /quizzes/{quizId}/questions/{questionId}
+          method: PUT
+
+  submitAnswer:
+    handler: quizzes/submitAnswer.handler
+    events:
+      - httpApi:
+          path: /quizzes/{quizId}/questions/{questionId}/submit
+          method: POST
+
+  deleteQuiz:
+    handler: quizzes/deleteQuiz.handler
+    events:
+      - httpApi:
+          path: /quizzes/{quizId}
+          method: DELETE
+
+  deleteQuestion:
+    handler: quizzes/deleteQuestion.handler
+    events:
+      - httpApi:
+          path: /quizzes/{quizId}/questions/{questionId}
+          method: DELETE
+
+  listUsers:
+    handler: users/listUsers.handler
+    events:
+      - httpApi:
+          path: /users
+          method: GET
+
+resources:
+  Resources:
+    UsersTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: UsersTable
+        AttributeDefinitions:
+          - AttributeName: userId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: userId
+            KeyType: HASH
+        BillingMode: PAY_PER_REQUEST
+
+    QuizzesTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: QuizzesTable
+        AttributeDefinitions:
+          - AttributeName: quizId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: quizId
+            KeyType: HASH
+        BillingMode: PAY_PER_REQUEST
+
+    QuestionsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: QuestionsTable
+        AttributeDefinitions:
+          - AttributeName: questionId
+            AttributeType: S
+          - AttributeName: quizId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: questionId
+            KeyType: HASH
+          - AttributeName: quizId
+            KeyType: RANGE
+        BillingMode: PAY_PER_REQUEST
+
+    ScoresTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ScoresTable
+        AttributeDefinitions:
+          - AttributeName: userId
+            AttributeType: S
+          - AttributeName: quizId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: userId
+            KeyType: HASH
+          - AttributeName: quizId
+            KeyType: RANGE
+        BillingMode: PAY_PER_REQUEST
